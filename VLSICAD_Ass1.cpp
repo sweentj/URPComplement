@@ -19,6 +19,11 @@ void readFile(CubeList* cL, string fileName);
 int variableSelection(CubeList pcn);
 CubeList posCofactor(CubeList pcn, int var);
 CubeList negCofactor(CubeList pcn, int var);
+void andCube(CubeList* cL, int var, bool comp);
+void orCube(CubeList* P, CubeList N);
+bool compareVector(vector<int> v1, vector<int> v2);
+bool isSimple(CubeList F);
+CubeList complement(CubeList F);
 
 //find indices of max elements in a vector
 vector<int> max_element(vector<int>* list)
@@ -84,25 +89,6 @@ vector<int> min_element(vector<int>* list)
     }
 
     return largest;
-}
-
-int main()
-{
-    CubeList pcn;
-    int x;
-
-    string fileName = "part1.pcn";
-
-    readFile(&pcn, fileName);
-
-    //select variable to cofactor on
-    x = variableSelection(pcn);
-
-    //get positive cofactor based on x
-
-    //get negative cofactor based on x
-
-    return 0;
 }
 
 int variableSelection(CubeList pcn) {
@@ -228,9 +214,132 @@ void readFile(CubeList* cL, string fileName) {
 
 CubeList posCofactor(CubeList pcn, int var)
 {
-    CubeList pos_pcn = pcn;
+    CubeList* pos_pcn = &pcn;
+    int ind = var - 1;
 
-    return pos_pcn;
+    for (int i = pos_pcn->numCubes - 1; i >= 0; i--) {
+        //var is opposite of Shannon expansion
+        //get rid of cube
+        if (pos_pcn->F[i].at(ind) == -1) {
+            pos_pcn->F.erase(pos_pcn->F.begin() + i);
+            pos_pcn->numCubes--;
+        }
+        //set var in cube to dont care
+        else if (pos_pcn->F[i].at(ind) == 1) {
+            pos_pcn->F[i][ind] = 0;
+        }
+    }
+
+    return *pos_pcn;
+}
+
+CubeList negCofactor(CubeList pcn, int var)
+{
+    CubeList* neg_pcn = &pcn;
+    int ind = var - 1;
+
+    for (int i = neg_pcn->numCubes - 1; i >= 0; i--) {
+        //var is opposite of Shannon expansion
+        //get rid of cube
+        if (neg_pcn->F[i].at(ind) == 1) {
+            neg_pcn->F.erase(neg_pcn->F.begin() + i);
+            neg_pcn->numCubes--;
+        }
+        //set var in cube to dont care
+        else if (neg_pcn->F[i].at(ind) == -1) {
+            neg_pcn->F[i][ind] = 0;
+        }
+    }
+
+    return *neg_pcn;
+}
+
+void andCube(CubeList* cL, int var, bool comp)
+{
+    int ind = var-1;
+    for (int i = 0; i < cL->numCubes; i++) {
+        if (comp)cL->F[i][ind] = 1;
+        else cL->F[i][ind] = -1;
+    }
+}
+
+bool compareVector(vector<int> v1, vector<int> v2)
+{
+    int n = v1.size();
+
+    for (int i = 0; i < n; i++) {
+        if (v1[i] != v2[i])return 0;
+    }
+    return 1;
+}
+
+void orCube(CubeList* P, CubeList N)
+{
+    int n = P->numCubes;
+    int m = P->numVars;
+    bool flag = 0;
+
+    for (auto f : N.F) {
+        for (int i = 0; i < n; i++) {
+            //if theres a duplicate vector, set flag and don't copy
+            if (compareVector(P->F[i], f))flag = 1;
+        }
+        if (flag == 0)P->F.push_back(f);
+        flag = 0;
+    }
+
+}
+
+bool isSimple(CubeList F)
+{
+
+}
+
+CubeList complement(CubeList F)
+{
+    int x;
+
+    if (isSimple(F)) {
+
+    }
+    else {
+        x = variableSelection(F);
+        CubeList pos_pcn = complement(posCofactor(F, x));
+        CubeList neg_pcn = complement(negCofactor(F, x));
+
+        andCube(&pos_pcn, x, 1);
+        andCube(&neg_pcn, x, 0);
+
+        orCube(&pos_pcn, neg_pcn);
+
+        return pos_pcn;
+    }
+}
+
+int main()
+{
+    CubeList pcn;
+    int x;
+
+    string fileName = "part1.pcn";
+
+    readFile(&pcn, fileName);
+
+    //select variable to cofactor on
+    x = variableSelection(pcn);
+
+    //get positive cofactor based on x
+    CubeList pos_pcn = posCofactor(pcn, x);
+
+    //get negative cofactor based on x
+    CubeList neg_pcn = negCofactor(pcn, x);
+
+    andCube(&pos_pcn, x, 1);
+    andCube(&neg_pcn, x, 0);
+
+    orCube(&pos_pcn, neg_pcn);
+
+    return 0;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
