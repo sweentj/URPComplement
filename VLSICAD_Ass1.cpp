@@ -22,8 +22,9 @@ CubeList negCofactor(CubeList pcn, int var);
 void andCube(CubeList* cL, int var, bool comp);
 void orCube(CubeList* P, CubeList N);
 bool compareVector(vector<int> v1, vector<int> v2);
-bool isSimple(CubeList F);
+int isSimple(CubeList F);
 CubeList complement(CubeList F);
+void printCube(CubeList C);
 
 //find indices of max elements in a vector
 vector<int> max_element(vector<int>* list)
@@ -135,9 +136,21 @@ int variableSelection(CubeList pcn) {
             }
         }
         //at this point, all variables that are unate should be removed
-
-        auto binMin = min_element(&varTminC);
-        chosenVar = binMin[0] + 1;
+        //most binate var should be left, if there's still more than one, do a tiebreak
+        if (binMax.size() > 1) {
+            vector<int> varTminC2(binMax.size(), 0);
+            int j = 0;
+            for (auto i : binMax) {
+                varTminC2[j] = varTminC[i];
+                j++;
+            }
+            auto binMin = min_element(&varTminC2);
+            chosenVar = binMax[binMin[0]]+1;
+        }
+        else {
+            chosenVar = binMax[0] + 1;
+        }
+        
 
     }
     else
@@ -290,17 +303,60 @@ void orCube(CubeList* P, CubeList N)
 
 }
 
-bool isSimple(CubeList F)
+int isSimple(CubeList F)
 {
+    int sum = 0;
 
+    //cubeList is empty 
+    if (F.numCubes == 0) return 1;
+    //compute the complement directly
+    else if (F.numCubes == 1)return 2;
+    //check for "All Don't Cares" cube
+    else {
+        for (auto f : F.F) {
+            for (auto i : f) {
+                sum += std::abs(i);
+            }
+            //All Dont Care cubes is present
+            if (sum == 0) return 3;
+            sum = 0;
+        }
+        return 0;
+    }
 }
 
 CubeList complement(CubeList F)
 {
     int x;
+    int jeez = isSimple(F);
+    if (jeez) {
+        CubeList* C = new CubeList();
 
-    if (isSimple(F)) {
-
+        switch (jeez) {
+        case 1:
+            //cubeList is empty
+            C->numCubes = F.numCubes;
+            C->numVars = F.numVars;
+            C->F[0] = vector<int>(C->numVars, 0);
+            return *C;
+            break;
+        case 2:
+            //compute complement directly
+            C->numVars = F.numVars;
+            C->F.push_back(vector<int>(C->numVars, 0));
+            for (int i=0;i<F.numVars;i++) {
+                C->F[0][i] = -1 * F.F[0][i];
+            }
+            C->numCubes = C->F.size();
+            return *C;
+            break;
+        case 3:
+            //All DOn't Cares
+            return *C;
+            break;
+        default:
+            break;
+        }
     }
     else {
         x = variableSelection(F);
@@ -312,8 +368,49 @@ CubeList complement(CubeList F)
 
         orCube(&pos_pcn, neg_pcn);
 
+        pos_pcn.numCubes = pos_pcn.F.size();
+
         return pos_pcn;
     }
+}
+
+void printCube(CubeList C)
+{
+    fstream newfile;
+    string fileName = "URPOutput.txt";
+    newfile.open(fileName, ios::out);
+    
+    newfile << C.numVars << "\n";
+    newfile << C.numCubes << "\n";
+
+    //lambda helper for evaluating the number of non zero elements
+    auto vector_sum = [](vector<int> v)
+    {
+        int sum = 0;
+        for (auto i : v) {
+            sum += abs(i);
+        }
+        return sum;
+    };
+
+    if (newfile.is_open()) {
+        for (int i = 0; i < C.numCubes; i++) {
+            int numVars = vector_sum(C.F[i]);
+            newfile << numVars << " ";
+            for (int j = 0; j < C.numVars; j++) {
+                if (C.F[i][j] != 0) {
+                    newfile << C.F[i][j] * (j + 1) << " ";
+                }
+            }
+            newfile << "\n";
+
+        }
+        newfile.close();
+    }
+    else {
+        cout << "Could not open file\n";
+    }
+
 }
 
 int main()
@@ -325,19 +422,41 @@ int main()
 
     readFile(&pcn, fileName);
 
+    CubeList* C = new CubeList();
+    *C = complement(pcn);
+
+    printCube(*C);
+
+    /*vector<vector<int>> F = { {1,0,0}, {1, -1, 0}, {0, 1,-1}, {0, 0, 0} };
+    pcn_test->F = F;
+    pcn_test->numCubes = 4;
+    pcn_test->numVars = 3;
+
+    int t = isSimple(*pcn_test);*/
     //select variable to cofactor on
-    x = variableSelection(pcn);
 
-    //get positive cofactor based on x
-    CubeList pos_pcn = posCofactor(pcn, x);
+    ////********MANUAL TEST*******
 
-    //get negative cofactor based on x
-    CubeList neg_pcn = negCofactor(pcn, x);
+    //x = variableSelection(pcn);
+    //CubeList pos_pcn = posCofactor(pcn, x);
+    //x = variableSelection(pos_pcn);
+    //CubeList pos_pcn2 = posCofactor(pos_pcn, x);
+    //CubeList* P = new CubeList();
+    //*P = complement(pos_pcn2);
 
-    andCube(&pos_pcn, x, 1);
-    andCube(&neg_pcn, x, 0);
+    //x = variableSelection(pcn);
+    //CubeList neg_pcn = negCofactor(pcn, x);
+    //x = variableSelection(neg_pcn);
+    //CubeList neg_pcn2 = negCofactor(neg_pcn, x);
+    //CubeList* N = new CubeList();
+    //*N = complement(neg_pcn2);
 
-    orCube(&pos_pcn, neg_pcn);
+    //andCube(P, 1, 1);
+    //andCube(N, 1, 0);
+
+    //orCube(P, *N);
+
+    ////********** END TEST ****
 
     return 0;
 }
